@@ -3,9 +3,9 @@
 
 ## Terraform + AWS Infrastructure
 
-**Stack:** Terraform with AWS — EKS/ECS, RDS, ElastiCache, S3, SQS, IAM, OIDC
+**Stack:** Terraform with AWS - EKS/ECS, RDS, ElastiCache, S3, SQS, IAM, OIDC
 
-Two template variants: [Multi-Root](https://github.com/spartan-stratos/template-infra-terraform-multiple-root) (per-env directories) and [Single-Root](https://github.com/spartan-stratos/template-infra-terraform-single-root) (envs/ layout, supports ECS + EKS).
+**Canonical templates:** [`spartan-sre-wiki`](https://github.com/spartan-stratos/spartan-sre-wiki) `templates/` is the single source for all infra scaffolds. Clone it locally (`git clone git@github.com:spartan-stratos/spartan-sre-wiki.git`) and scaffold via `templates/scaffold.sh` - never hand-author or copy a live service. Variants: [single-root](https://github.com/spartan-stratos/spartan-sre-wiki/tree/master/templates/terraform/single-root) (envs/ layout, ECS + EKS), [multiple-root](https://github.com/spartan-stratos/spartan-sre-wiki/tree/master/templates/terraform/multiple-root) (per-env/per-account), and the data-driven [service-monorepo](https://github.com/spartan-stratos/spartan-sre-wiki/tree/master/templates/service-monorepo) for EKS ArgoCD/GitOps wiring (one `deployables.yaml` source of truth). The old `template-infra-terraform-*` repos are archived and redirect here.
 
 Rules in `rules/infrastructure/` load automatically when `.tf`, `.hcl`, or `.tfvars` files are in context (Claude Code path-scoped rules). All `/spartan:tf-*` commands also import relevant rules explicitly.
 

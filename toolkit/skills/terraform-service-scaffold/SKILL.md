@@ -13,6 +13,33 @@ allowed_tools:
 
 Generates a complete service-level Terraform structure with live orchestration, reusable modules, environment configs, and CI/CD workflow.
 
+## Canonical source: scaffold FROM the wiki, do not hand-author
+
+> **Scaffold from `spartan-sre-wiki`, the single canonical home for all infra
+> templates - do not invent bespoke HCL or copy a live service.** The hand-roll /
+> copy-a-live-service approach is exactly what this repo replaces (it drifts and
+> bakes in one service's quirks).
+
+- **Repo:** `spartan-stratos/spartan-sre-wiki` (`git@github.com:spartan-stratos/spartan-sre-wiki.git`) - clone it locally and `git pull` before scaffolding.
+- **Templates live under** `templates/`:
+  - `templates/terraform/single-root/` - one root, `envs/{dev,prod}/`, ECS **or** EKS.
+  - `templates/terraform/multiple-root/` - separate roots per env/concern (multi-account).
+  - `templates/service-monorepo/` - **data-driven ArgoCD scaffold**: one
+    `infra/deployables.yaml` is the source of truth read by Terraform, the render
+    workflow, and the deploy matrix. Adding a deployable = one manifest entry. Use
+    this for any EKS service's app/GitOps wiring.
+  - `templates/argocd/` - hand-authored ArgoCD Application starters (copy-one-file fallback).
+
+**Preferred flow:**
+1. `git clone git@github.com:spartan-stratos/spartan-sre-wiki.git` (or use the local clone above; `git pull` first).
+2. `templates/scaffold.sh single-root <dest>` (or `multiple-root`) to stamp the variant out (restores `.github/`, materializes `*.example` files).
+3. Fill placeholders (`YOUR_` / `REPLACE_ME_`), set the backend, `terraform init`.
+4. For ArgoCD/GitOps, copy `templates/service-monorepo/` and follow
+   `templates/service-monorepo/docs/argocd-onboarding.md`.
+
+The inline HCL below documents **what those templates contain** - use it as reference
+and as a fallback only when the wiki is unreachable. Prefer the templates verbatim.
+
 ## When to Use
 
 - Adding Terraform to a new service repository
@@ -144,7 +171,7 @@ One resource per file:
 #### main.tf
 
 ```hcl
-# Module entry point — locals and data sources only
+# Module entry point - locals and data sources only
 locals {
   name_prefix = "${var.project}-${var.service}-${var.env}"
 }
@@ -409,7 +436,7 @@ image_tag      = "latest"
 #### secrets.tfvars
 
 ```hcl
-# Encrypted via git-secret-protector — committed to git, decrypted at CI/CD time
+# Encrypted via git-secret-protector - committed to git, decrypted at CI/CD time
 db_password      = ""
 redis_auth_token = ""
 ```
@@ -514,21 +541,21 @@ jobs:
 
 After generating all files, produce this checklist:
 
-- [ ] `terraform/live/terraform.tf` — backend + provider
-- [ ] `terraform/live/variables.tf` — all input variables
-- [ ] `terraform/live/locals.tf` — computed values, remote state
-- [ ] `terraform/live/outputs.tf` — exported values
-- [ ] `terraform/modules/{service}/` — resource-per-file
-- [ ] `terraform/envs/dev/state.config` — backend config
-- [ ] `terraform/envs/dev/terraform.tfvars` — environment values
-- [ ] `terraform/envs/dev/secrets.tfvars` — sensitive values (gitignored)
-- [ ] `.github/workflows/terraform.yml` — CI/CD pipeline
+- [ ] `terraform/live/terraform.tf` - backend + provider
+- [ ] `terraform/live/variables.tf` - all input variables
+- [ ] `terraform/live/locals.tf` - computed values, remote state
+- [ ] `terraform/live/outputs.tf` - exported values
+- [ ] `terraform/modules/{service}/` - resource-per-file
+- [ ] `terraform/envs/dev/state.config` - backend config
+- [ ] `terraform/envs/dev/terraform.tfvars` - environment values
+- [ ] `terraform/envs/dev/secrets.tfvars` - sensitive values (gitignored)
+- [ ] `.github/workflows/terraform.yml` - CI/CD pipeline
 - [ ] `.gitignore` includes `*.tfvars` secrets, `.terraform/`, `*.tfstate*`
 
 ## Interaction Style
 
 - Asks service name, container host, and resources before generating
-- Generates all files in one pass — no partial output
+- Generates all files in one pass - no partial output
 - Uses registry modules with version pinning, never inline resources
 - Keeps providers in `live/` only, never in modules
 
@@ -536,14 +563,14 @@ After generating all files, produce this checklist:
 
 - Use registry modules from `{project}/terraform-modules` with `?ref=vX.Y.Z`
 - Version-pin all providers and modules
-- Flat locals — no nested maps unless unavoidable
+- Flat locals - no nested maps unless unavoidable
 - Providers defined in `live/` only, never in modules
 - One resource per file in modules
 - Remote state for cross-stack references
 - Sensitive variables marked with `sensitive = true`
 - All resources tagged with project, service, environment, ManagedBy
 - State stored in S3 with DynamoDB locking
-- Secrets never committed — use `.gitignore` and `secrets.tfvars`
+- Secrets never committed - use `.gitignore` and `secrets.tfvars`
 
 ## Output
 
