@@ -10,7 +10,7 @@
       "name": "ai-toolkit",
       "description": "5 workflows, 69 commands, 21 rules, 29 skills, 9 agents — organized in 12 packs with dependencies",
       "source": "./toolkit",
-      "version": "1.25.0"
+      "version": "1.27.0"
     }
   ]
 }
