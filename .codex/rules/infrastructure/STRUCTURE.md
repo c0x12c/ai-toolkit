@@ -9,11 +9,10 @@ paths:
 > Full guide: use `/spartan:tf-scaffold` command
 
 > **Canonical templates:** [`spartan-sre-wiki`](https://github.com/spartan-stratos/spartan-sre-wiki)
-> `templates/` is the single source for all infra scaffolds (local clone:
-> `/Users/ducduong/git/c0x12c/spartan-sre-wiki`). Scaffold from there via
-> `templates/scaffold.sh`; do not hand-author or copy a live service. The old
-> `template-infra-terraform-*` repos are archived and redirect here. For an EKS
-> service's ArgoCD/GitOps wiring use the data-driven `templates/service-monorepo/`.
+> `templates/` is the single source for all infra scaffolds. Clone it locally and
+> scaffold via `templates/scaffold.sh`; do not hand-author or copy a live service.
+> The old `template-infra-terraform-*` repos are archived and redirect here. For an
+> EKS service's ArgoCD/GitOps wiring use the data-driven `templates/service-monorepo/`.
 
 ## Two Template Variants
 

@@ -20,8 +20,7 @@ Generates a complete service-level Terraform structure with live orchestration, 
 > copy-a-live-service approach is exactly what this repo replaces (it drifts and
 > bakes in one service's quirks).
 
-- **Repo:** `spartan-stratos/spartan-sre-wiki` (`git@github.com:spartan-stratos/spartan-sre-wiki.git`)
-- **Local clone (if present):** `/Users/ducduong/git/c0x12c/spartan-sre-wiki`
+- **Repo:** `spartan-stratos/spartan-sre-wiki` (`git@github.com:spartan-stratos/spartan-sre-wiki.git`) - clone it locally and `git pull` before scaffolding.
 - **Templates live under** `templates/`:
   - `templates/terraform/single-root/` - one root, `envs/{dev,prod}/`, ECS **or** EKS.
   - `templates/terraform/multiple-root/` - separate roots per env/concern (multi-account).
