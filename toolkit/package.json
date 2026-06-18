@@ -1,6 +1,6 @@
 {
   "name": "@c0x12c/ai-toolkit",
-  "version": "1.26.0",
+  "version": "1.27.0",
   "description": "Engineering discipline layer for AI coding agents — commands, rules, skills, agents, and packs for Claude Code",
   "type": "module",
   "bin": {

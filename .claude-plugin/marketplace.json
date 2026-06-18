@@ -10,7 +10,7 @@
       "name": "ai-toolkit",
       "description": "Engineering discipline layer for Claude Code — workflows, rules, skills, agents organized in modular packs",
       "source": "./toolkit",
-      "version": "1.26.0"
+      "version": "1.27.0"
     }
   ]
 }
