@@ -8,13 +8,20 @@ paths:
 
 > Full guide: use `/spartan:tf-scaffold` command
 
+> **Canonical templates:** [`spartan-sre-wiki`](https://github.com/spartan-stratos/spartan-sre-wiki)
+> `templates/` is the single source for all infra scaffolds (local clone:
+> `/Users/ducduong/git/c0x12c/spartan-sre-wiki`). Scaffold from there via
+> `templates/scaffold.sh`; do not hand-author or copy a live service. The old
+> `template-infra-terraform-*` repos are archived and redirect here. For an EKS
+> service's ArgoCD/GitOps wiring use the data-driven `templates/service-monorepo/`.
+
 ## Two Template Variants
 
 ### Multi-Root (v1)
 
 Separate root modules per environment. Best for multi-account setups.
 
-Reference: [template-infra-terraform-multiple-root](https://github.com/spartan-stratos/template-infra-terraform-multiple-root)
+Reference: [`spartan-sre-wiki` / templates/terraform/multiple-root](https://github.com/spartan-stratos/spartan-sre-wiki/tree/master/templates/terraform/multiple-root)
 
 ```
 infra-terraform/
@@ -39,7 +46,7 @@ infra-terraform/
 
 One root module with per-environment variable files. Supports both ECS and EKS. Best for simpler setups.
 
-Reference: [template-infra-terraform-single-root](https://github.com/spartan-stratos/template-infra-terraform-single-root)
+Reference: [`spartan-sre-wiki` / templates/terraform/single-root](https://github.com/spartan-stratos/spartan-sre-wiki/tree/master/templates/terraform/single-root)
 
 ```
 infra-terraform/
