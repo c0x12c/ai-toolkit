@@ -11,6 +11,7 @@
     "lib/",
     "commands/",
     "codex/",
+    "devin/",
     "skills/",
     "rules/",
     "agents/",
@@ -28,6 +29,7 @@
     "cursor",
     "windsurf",
     "codex",
+    "devin",
     "copilot",
     "engineering",
     "agent-skills"

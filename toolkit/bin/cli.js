@@ -28,6 +28,7 @@ const SRC = {
   skills:     join(PKG_ROOT, 'skills'),
   agents:     join(PKG_ROOT, 'agents'),
   codexHelper: join(PKG_ROOT, 'codex', 'spartan.zsh'),
+  devinHelper: join(PKG_ROOT, 'devin', 'spartan.zsh'),
   profiles:   join(PKG_ROOT, 'profiles'),
   claudeMd:   join(PKG_ROOT, 'claude-md'),
   version:    join(PKG_ROOT, 'VERSION'),
@@ -111,14 +112,14 @@ if (showHelp) {
 
   ${bold('Options:')}
     --agent=NAME    Agent to set up for (default: claude-code)
-                    Choices: claude-code, cursor, windsurf, codex, copilot
+                    Choices: claude-code, cursor, windsurf, codex, copilot, devin
     --packs=LIST    Comma-separated packs (claude-code only)
                     Example: --packs=backend-micronaut,product
     --auto          Auto-detect tech stack and suggest packs (no menu)
     --pack-dir=DIR  Load community packs from an external directory
     --format=NAME   Output format: agents-md (exports AGENTS.md for cross-tool use)
     --all           Install all packs
-    --global        Install to home dir (default for claude-code/codex)
+    --global        Install to home dir (default for claude-code/codex/devin)
     --local         Install to current project's .claude/ dir (won't touch root CLAUDE.md)
     --uninstall     Remove all Spartan files (use with --local or --global)
     --help          Show this help
@@ -142,6 +143,9 @@ ${lines.join('\n')}`).join('\n')}
 
     ${cyan('npx @c0x12c/ai-toolkit@latest --agent=cursor')}
       Install rules for Cursor (rules + AGENTS.md only)
+
+    ${cyan('npx @c0x12c/ai-toolkit@latest --agent=devin')}
+      Full install for Devin CLI (commands as skills + rules via AGENTS.md)
 
     ${cyan('npx @c0x12c/ai-toolkit@latest --auto')}
       Auto-detect your tech stack and install matching packs
@@ -169,6 +173,66 @@ async function uninstall() {
     base = mode === 'global' ? join(home, '.codex') : join(cwd, '.codex');
     claudeMdPath = join(base, 'CLAUDE.md');
     configDir = join(cwd, '.spartan');
+  } else if (agent === 'devin') {
+    base = mode === 'global' ? join(home, '.config', 'devin') : join(cwd, '.devin');
+    agentsMdPath = mode === 'global' ? join(base, 'AGENTS.md') : join(cwd, 'AGENTS.md');
+    configDir = join(cwd, '.spartan');
+
+    console.log(`\n  Removing Spartan from ${bold(mode)} (${base})...\n`);
+
+    let removed = 0;
+    const targets = [
+      { path: join(base, 'skills'),          label: 'skills/' },
+      { path: join(base, '.spartan-packs'),   label: '.spartan-packs' },
+      { path: join(base, '.spartan-version'), label: '.spartan-version' },
+      { path: join(base, 'spartan.zsh'),      label: 'spartan.zsh' },
+    ];
+    for (const { path, label } of targets) {
+      if (existsSync(path)) {
+        rmSync(path, { recursive: true, force: true });
+        console.log(`  ${green('-')} ${label}`);
+        removed++;
+      }
+    }
+
+    // Carried Codex helper (cross-carry, see getTargets()). Only remove the
+    // parent codex/ dir if it ends up empty — mirrors the claude-code cleanup.
+    const codexHelperDir = join(base, 'codex');
+    if (existsSync(join(codexHelperDir, 'spartan.zsh'))) {
+      rmSync(join(codexHelperDir, 'spartan.zsh'));
+      console.log(`  ${green('-')} codex/spartan.zsh`);
+      removed++;
+    }
+    if (existsSync(codexHelperDir)) {
+      try {
+        if (readdirSync(codexHelperDir).length === 0) {
+          rmSync(codexHelperDir, { recursive: true, force: true });
+          console.log(`  ${green('-')} codex/`);
+          removed++;
+        }
+      } catch {
+        // Best-effort cleanup; ignore failures.
+      }
+    }
+
+    if (agentsMdPath && existsSync(agentsMdPath)) {
+      rmSync(agentsMdPath);
+      console.log(`  ${green('-')} AGENTS.md`);
+      removed++;
+    }
+
+    if (configDir && existsSync(configDir)) {
+      rmSync(configDir, { recursive: true, force: true });
+      console.log(`  ${green('-')} .spartan/`);
+      removed++;
+    }
+
+    if (removed === 0) {
+      console.log(`  ${dim('Nothing to remove — Spartan is not installed here.')}`);
+    }
+
+    console.log(`\n  ${bold(green('Uninstall done.'))} Removed ${removed} items.\n`);
+    return;
   } else {
     // cursor, windsurf, copilot
     const rulesDir = {
@@ -207,17 +271,22 @@ async function uninstall() {
     { path: join(base, '.spartan-repo'),           label: '.spartan-repo' },
   ];
 
-  // Codex helper paths differ per agent. Target the helper file specifically —
-  // do not recursively delete the whole <base>/codex/ directory, since users
-  // may have unrelated files there.
-  //   - claude-code installs to <base>/codex/spartan.zsh
-  //   - codex installs to <base>/spartan.zsh
+  // Codex/Devin helper paths differ per agent. Target the helper file specifically —
+  // do not recursively delete the whole <base>/codex/ or <base>/devin/ directory,
+  // since users may have unrelated files there.
+  //   - claude-code carries both: <base>/codex/spartan.zsh, <base>/devin/spartan.zsh
+  //   - codex installs its own active helper at <base>/spartan.zsh, carries <base>/devin/spartan.zsh
   let codexHelperDir = null;
+  let devinHelperDir = null;
   if (agent === 'claude-code') {
     targets.push({ path: join(base, 'codex', 'spartan.zsh'), label: 'codex/spartan.zsh' });
+    targets.push({ path: join(base, 'devin', 'spartan.zsh'), label: 'devin/spartan.zsh' });
     codexHelperDir = join(base, 'codex');
+    devinHelperDir = join(base, 'devin');
   } else if (agent === 'codex') {
     targets.push({ path: join(base, 'spartan.zsh'), label: 'spartan.zsh' });
+    targets.push({ path: join(base, 'devin', 'spartan.zsh'), label: 'devin/spartan.zsh' });
+    devinHelperDir = join(base, 'devin');
   }
 
   console.log(`\n  Removing Spartan from ${bold(mode)} (${base})...\n`);
@@ -231,18 +300,19 @@ async function uninstall() {
     }
   }
 
-  // Clean up an empty codex/ directory left behind after removing the helper
-  // (claude-code only). Skip silently if the dir has other user files.
-  if (codexHelperDir && existsSync(codexHelperDir)) {
-    try {
-      const remaining = readdirSync(codexHelperDir);
-      if (remaining.length === 0) {
-        rmSync(codexHelperDir, { recursive: false, force: true });
-        console.log(`  ${green('-')} codex/`);
-        removed++;
+  // Clean up an empty codex/ or devin/ directory left behind after removing
+  // the helper. Skip silently if the dir has other user files.
+  for (const [dir, label] of [[codexHelperDir, 'codex/'], [devinHelperDir, 'devin/']]) {
+    if (dir && existsSync(dir)) {
+      try {
+        if (readdirSync(dir).length === 0) {
+          rmSync(dir, { recursive: true, force: true });
+          console.log(`  ${green('-')} ${label}`);
+          removed++;
+        }
+      } catch {
+        // Best-effort cleanup; ignore failures.
       }
-    } catch {
-      // Best-effort cleanup; ignore failures.
     }
   }
 
@@ -319,6 +389,7 @@ function getTargets() {
       agents:    join(base, 'agents'),
       claudeMd:  join(base, 'CLAUDE.md'),
       codexHelper: join(base, 'codex', 'spartan.zsh'),
+      devinHelper: join(base, 'devin', 'spartan.zsh'),
       packsFile: join(base, '.spartan-packs'),
       versionFile: join(base, '.spartan-version'),
     };
@@ -335,6 +406,22 @@ function getTargets() {
       agents:    join(base, 'agents'),
       claudeMd:  join(base, 'CLAUDE.md'),
       codexHelper: join(base, 'spartan.zsh'),
+      devinHelper: join(base, 'devin', 'spartan.zsh'),
+      packsFile: join(base, '.spartan-packs'),
+      versionFile: join(base, '.spartan-version'),
+    };
+  }
+
+  if (agent === 'devin') {
+    const base = mode === 'global' ? join(home, '.config', 'devin') : join(cwd, '.devin');
+    return {
+      base,
+      skills:    join(base, 'skills'),
+      // Local: project-root AGENTS.md (Devin's documented project convention).
+      // Global: <base>/AGENTS.md (Devin's documented global convention).
+      agentsMd:  mode === 'global' ? join(base, 'AGENTS.md') : join(cwd, 'AGENTS.md'),
+      codexHelper: join(base, 'codex', 'spartan.zsh'),
+      devinHelper: join(base, 'spartan.zsh'),
       packsFile: join(base, '.spartan-packs'),
       versionFile: join(base, '.spartan-version'),
     };
@@ -559,80 +646,141 @@ async function installFull() {
   }
   console.log('');
 
-  // 1) Assemble & install CLAUDE.md (always into .claude/CLAUDE.md, never project root)
-  console.log(`${blue('[1/6]')} ${bold('Assembling CLAUDE.md...')}`);
+  // 1) Assemble & install rules file
+  //    claude-code/codex: CLAUDE.md into <base>/CLAUDE.md (never project root)
+  //    devin: AGENTS.md — project root when local, <base>/AGENTS.md when global
+  //           (see getTargets(): Devin's documented rules-discovery convention)
+  if (agent === 'devin') {
+    console.log(`${blue('[1/6]')} ${bold('Assembling AGENTS.md...')}`);
 
-  // Warn if project already has a root CLAUDE.md — we don't touch it
-  if (mode === 'local') {
-    const rootClaudeMd = join(process.cwd(), 'CLAUDE.md');
-    if (existsSync(rootClaudeMd)) {
-      console.log(`  ${yellow('!')} Project root CLAUDE.md found — leaving it untouched`);
-      console.log(`  ${dim('  Spartan writes to .claude/CLAUDE.md (both are loaded by Claude Code)')}`);
+    const agentsContent = assembleAGENTSmd(SRC.claudeMd, SRC.agents, selectedPacks, PACKS);
+    ensureDir(dirname(targets.agentsMd));
+    writeFileSync(targets.agentsMd, agentsContent, 'utf-8');
+    console.log(`  ${green('+')} AGENTS.md assembled\n`);
+  } else {
+    console.log(`${blue('[1/6]')} ${bold('Assembling CLAUDE.md...')}`);
+
+    // Warn if project already has a root CLAUDE.md — we don't touch it
+    if (mode === 'local') {
+      const rootClaudeMd = join(process.cwd(), 'CLAUDE.md');
+      if (existsSync(rootClaudeMd)) {
+        console.log(`  ${yellow('!')} Project root CLAUDE.md found — leaving it untouched`);
+        console.log(`  ${dim('  Spartan writes to .claude/CLAUDE.md (both are loaded by Claude Code)')}`);
+      }
     }
+
+    if (existsSync(targets.claudeMd)) {
+      const backupPath = `${targets.claudeMd}.${Date.now()}.bak`;
+      copyFile(targets.claudeMd, backupPath);
+      console.log(`  ${dim('Backed up existing .claude/CLAUDE.md')}`);
+    }
+
+    const assembled = assembleCLAUDEmd(SRC.claudeMd, selectedPacks, PACKS);
+    ensureDir(dirname(targets.claudeMd));
+    writeFileSync(targets.claudeMd, assembled, 'utf-8');
+
+    const sectionCount = 2 + 1 + gatherItems(selectedPacks, 'claudeSections').length;
+    console.log(`  ${green('+')} .claude/CLAUDE.md assembled (${sectionCount} sections)\n`);
   }
-
-  if (existsSync(targets.claudeMd)) {
-    const backupPath = `${targets.claudeMd}.${Date.now()}.bak`;
-    copyFile(targets.claudeMd, backupPath);
-    console.log(`  ${dim('Backed up existing .claude/CLAUDE.md')}`);
-  }
-
-  const assembled = assembleCLAUDEmd(SRC.claudeMd, selectedPacks, PACKS);
-  ensureDir(dirname(targets.claudeMd));
-  writeFileSync(targets.claudeMd, assembled, 'utf-8');
-
-  const sectionCount = 2 + 1 + gatherItems(selectedPacks, 'claudeSections').length;
-  console.log(`  ${green('+')} .claude/CLAUDE.md assembled (${sectionCount} sections)\n`);
 
   // 2) Commands
+  //    claude-code/codex: <base>/commands/spartan/<name>.md + router at <base>/commands/spartan.md
+  //    devin: folded into skills (Devin's only extensibility unit) — router becomes the
+  //           "spartan" skill, each command becomes "spartan-<name>" (see plan decision 1)
   console.log(`${blue('[2/6]')} ${bold('Installing commands...')}`);
-  ensureDir(targets.commands);
   let cmdCount = 0;
 
-  // Smart router (always)
-  if (existsSync(SRC.router)) {
-    copyFile(SRC.router, targets.router);
-    console.log(`  ${green('+')} /spartan (smart router)`);
-    cmdCount++;
-  }
+  if (agent === 'devin') {
+    ensureDir(targets.skills);
 
-  const selectedCommands = gatherItemsWithSource(selectedPacks, 'commands');
-  for (const { item: cmd, srcRoot } of selectedCommands) {
-    const src = join(srcRoot, 'commands', 'spartan', `${cmd}.md`);
-    if (existsSync(src)) {
-      copyFile(src, join(targets.commands, `${cmd}.md`));
-      console.log(`  ${green('+')} /spartan:${cmd}`);
+    if (existsSync(SRC.router)) {
+      const routerContent = readFileSync(SRC.router, 'utf-8');
+      const routerDir = join(targets.skills, 'spartan');
+      ensureDir(routerDir);
+      writeFileSync(join(routerDir, 'SKILL.md'), routerContent, 'utf-8');
+      console.log(`  ${green('+')} /spartan (smart router)`);
       cmdCount++;
-    } else {
-      console.log(`  ${yellow('!')} /spartan:${cmd} (not found, skipped)`);
+    }
+
+    const selectedCommands = gatherItemsWithSource(selectedPacks, 'commands');
+    for (const { item: cmd, srcRoot } of selectedCommands) {
+      const src = join(srcRoot, 'commands', 'spartan', `${cmd}.md`);
+      if (existsSync(src)) {
+        const cmdDir = join(targets.skills, `spartan-${cmd}`);
+        ensureDir(cmdDir);
+        // Rewrite the frontmatter `name:` from `spartan:<cmd>` to `spartan-<cmd>` —
+        // colons aren't valid in Devin's skill-name-to-slash-trigger resolution.
+        const cmdContent = readFileSync(src, 'utf-8').replace(
+          /^name:\s*spartan:(.+)$/m,
+          `name: spartan-$1`
+        );
+        writeFileSync(join(cmdDir, 'SKILL.md'), cmdContent, 'utf-8');
+        console.log(`  ${green('+')} /spartan-${cmd}`);
+        cmdCount++;
+      } else {
+        console.log(`  ${yellow('!')} /spartan-${cmd} (not found, skipped)`);
+      }
+    }
+  } else {
+    ensureDir(targets.commands);
+
+    // Smart router (always)
+    if (existsSync(SRC.router)) {
+      copyFile(SRC.router, targets.router);
+      console.log(`  ${green('+')} /spartan (smart router)`);
+      cmdCount++;
+    }
+
+    const selectedCommands = gatherItemsWithSource(selectedPacks, 'commands');
+    for (const { item: cmd, srcRoot } of selectedCommands) {
+      const src = join(srcRoot, 'commands', 'spartan', `${cmd}.md`);
+      if (existsSync(src)) {
+        copyFile(src, join(targets.commands, `${cmd}.md`));
+        console.log(`  ${green('+')} /spartan:${cmd}`);
+        cmdCount++;
+      } else {
+        console.log(`  ${yellow('!')} /spartan:${cmd} (not found, skipped)`);
+      }
     }
   }
   console.log(`  ${bold(cmdCount + ' commands')} installed\n`);
 
-  if (existsSync(SRC.codexHelper) && targets.codexHelper) {
-    copyFile(SRC.codexHelper, targets.codexHelper);
-    const label = agent === 'codex' ? 'Codex shell helpers installed to' : 'Codex helper source copied to';
-    console.log(`  ${green('+')} ${label} ${dim(targets.codexHelper)}\n`);
+  for (const { src, target, label } of [
+    { src: SRC.codexHelper, target: targets.codexHelper, label: 'Codex' },
+    { src: SRC.devinHelper, target: targets.devinHelper, label: 'Devin' },
+  ]) {
+    if (existsSync(src) && target) {
+      copyFile(src, target);
+      const isOwnAgent = (label === 'Codex' && agent === 'codex') || (label === 'Devin' && agent === 'devin');
+      const verb = isOwnAgent ? 'shell helpers installed to' : 'helper source copied to';
+      console.log(`  ${green('+')} ${label} ${verb} ${dim(target)}\n`);
+    }
   }
 
   // 3) Rules (now with subdirectory structure)
-  const rulesWithSource = gatherItemsWithSource(selectedPacks, 'rules');
-  if (rulesWithSource.length > 0) {
-    console.log(`${blue('[3/6]')} ${bold('Installing rules...')}`);
-    let ruleCount = 0;
+  //    devin has no `targets.rules` — its rules are delivered via the assembled
+  //    AGENTS.md in Step 1 (see plan decision 4), so this step is skipped for it.
+  if (targets.rules) {
+    const rulesWithSource = gatherItemsWithSource(selectedPacks, 'rules');
+    if (rulesWithSource.length > 0) {
+      console.log(`${blue('[3/6]')} ${bold('Installing rules...')}`);
+      let ruleCount = 0;
 
-    for (const { item: rule, srcRoot } of rulesWithSource) {
-      const src = join(srcRoot, 'rules', rule);
-      const dest = join(targets.rules, rule);
-      if (existsSync(src)) {
-        copyFile(src, dest);
-        console.log(`  ${green('+')} ${rule}`);
-        ruleCount++;
+      for (const { item: rule, srcRoot } of rulesWithSource) {
+        const src = join(srcRoot, 'rules', rule);
+        const dest = join(targets.rules, rule);
+        if (existsSync(src)) {
+          copyFile(src, dest);
+          console.log(`  ${green('+')} ${rule}`);
+          ruleCount++;
+        }
       }
+      console.log(`  ${bold(ruleCount + ' rules')} installed\n`);
+    } else {
+      console.log(`${blue('[3/6]')} ${bold('Rules')} — ${dim('no rule packs selected, skipping')}\n`);
     }
-    console.log(`  ${bold(ruleCount + ' rules')} installed\n`);
   } else {
-    console.log(`${blue('[3/6]')} ${bold('Rules')} — ${dim('no rule packs selected, skipping')}\n`);
+    console.log(`${blue('[3/6]')} ${bold('Rules')} — ${dim('delivered via AGENTS.md (Step 1) for this agent')}\n`);
   }
 
   // 4) Skills
@@ -656,23 +804,29 @@ async function installFull() {
   }
 
   // 5) Agents
-  const agentsWithSource = gatherItemsWithSource(selectedPacks, 'agents');
-  if (agentsWithSource.length > 0) {
-    console.log(`${blue('[5/6]')} ${bold('Installing agents...')}`);
-    ensureDir(targets.agents);
-    let agentCount = 0;
-
-    for (const { item: agentFile, srcRoot } of agentsWithSource) {
-      const src = join(srcRoot, 'agents', agentFile);
-      if (existsSync(src)) {
-        copyFile(src, join(targets.agents, agentFile));
-        console.log(`  ${green('+')} ${agentFile.replace('.md', '')}`);
-        agentCount++;
-      }
-    }
-    console.log(`  ${bold(agentCount + ' agents')} installed\n`);
+  //    devin has no `targets.agents` — Devin CLI has no documented subagent
+  //    concept (only skills + MCP servers), so this is out of scope for it.
+  if (!targets.agents) {
+    console.log(`${blue('[5/6]')} ${bold('Agents')} — ${dim('not supported for this agent, skipping')}\n`);
   } else {
-    console.log(`${blue('[5/6]')} ${bold('Agents')} — ${dim('no agent packs selected, skipping')}\n`);
+    const agentsWithSource = gatherItemsWithSource(selectedPacks, 'agents');
+    if (agentsWithSource.length > 0) {
+      console.log(`${blue('[5/6]')} ${bold('Installing agents...')}`);
+      ensureDir(targets.agents);
+      let agentCount = 0;
+
+      for (const { item: agentFile, srcRoot } of agentsWithSource) {
+        const src = join(srcRoot, 'agents', agentFile);
+        if (existsSync(src)) {
+          copyFile(src, join(targets.agents, agentFile));
+          console.log(`  ${green('+')} ${agentFile.replace('.md', '')}`);
+          agentCount++;
+        }
+      }
+      console.log(`  ${bold(agentCount + ' agents')} installed\n`);
+    } else {
+      console.log(`${blue('[5/6]')} ${bold('Agents')} — ${dim('no agent packs selected, skipping')}\n`);
+    }
   }
 
   // 6) Generate .spartan/config.yaml from best matching profile
@@ -863,13 +1017,13 @@ async function main() {
   let selectedPacks;
 
   try {
-    if (agent === 'claude-code' || agent === 'codex') {
+    if (agent === 'claude-code' || agent === 'codex' || agent === 'devin') {
       selectedPacks = await installFull();
     } else if (['cursor', 'windsurf', 'copilot'].includes(agent)) {
       selectedPacks = await installRulesOnly();
     } else {
       console.error(`\n  ${C.red}Unknown agent: ${agent}${C.reset}`);
-      console.error(`  Supported: claude-code, cursor, windsurf, codex, copilot\n`);
+      console.error(`  Supported: claude-code, cursor, windsurf, codex, copilot, devin\n`);
       process.exit(1);
     }
   } finally {
@@ -936,6 +1090,16 @@ async function main() {
     console.log('');
     console.log(`  2. To change packs later, run again:`);
     console.log(`     ${cyan('npx @c0x12c/ai-toolkit@latest')}`);
+    console.log('');
+  } else if (agent === 'devin') {
+    console.log(`  ${bold('Next steps:')}`);
+    console.log('');
+    console.log(`  1. Open any project folder and type a skill trigger, e.g.:`);
+    console.log(`     ${cyan('/spartan-build')}`);
+    console.log(`     ${dim("(Devin skill names use hyphens, not colons — /spartan-build, not /spartan:build)")}`);
+    console.log('');
+    console.log(`  2. To change packs later, run again:`);
+    console.log(`     ${cyan('npx @c0x12c/ai-toolkit@latest --agent=devin')}`);
     console.log('');
   } else {
     console.log(`  ${bold('Next steps:')}`);
