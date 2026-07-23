@@ -159,6 +159,42 @@ ${lines.join('\n')}`).join('\n')}
 // ── Uninstall ──────────────────────────────────────────────────────
 import { rmSync } from 'node:fs';
 
+/** Remove each existing {path, label} target, logging as it goes. Returns count removed. */
+function removeTargets(targets) {
+  let removed = 0;
+  for (const { path, label } of targets) {
+    if (existsSync(path)) {
+      rmSync(path, { recursive: true, force: true });
+      console.log(`  ${green('-')} ${label}`);
+      removed++;
+    }
+  }
+  return removed;
+}
+
+/**
+ * Remove each [dir, label] pair only if it exists AND ends up empty (a helper
+ * file living inside it should already have been removed via removeTargets()).
+ * Skips silently if the dir has other user files. Returns count removed.
+ */
+function cleanupEmptyHelperDirs(pairs) {
+  let removed = 0;
+  for (const [dir, label] of pairs) {
+    if (dir && existsSync(dir)) {
+      try {
+        if (readdirSync(dir).length === 0) {
+          rmSync(dir, { recursive: true, force: true });
+          console.log(`  ${green('-')} ${label}`);
+          removed++;
+        }
+      } catch {
+        // Best-effort cleanup; ignore failures.
+      }
+    }
+  }
+  return removed;
+}
+
 async function uninstall() {
   const home = homedir();
   const cwd = process.cwd();
@@ -180,40 +216,16 @@ async function uninstall() {
 
     console.log(`\n  Removing Spartan from ${bold(mode)} (${base})...\n`);
 
-    let removed = 0;
-    const targets = [
+    // Carried Codex helper (cross-carry, see getTargets()) removed alongside
+    // devin's own files; its parent codex/ dir is cleaned up only if empty.
+    let removed = removeTargets([
       { path: join(base, 'skills'),          label: 'skills/' },
       { path: join(base, '.spartan-packs'),   label: '.spartan-packs' },
       { path: join(base, '.spartan-version'), label: '.spartan-version' },
       { path: join(base, 'spartan.zsh'),      label: 'spartan.zsh' },
-    ];
-    for (const { path, label } of targets) {
-      if (existsSync(path)) {
-        rmSync(path, { recursive: true, force: true });
-        console.log(`  ${green('-')} ${label}`);
-        removed++;
-      }
-    }
-
-    // Carried Codex helper (cross-carry, see getTargets()). Only remove the
-    // parent codex/ dir if it ends up empty — mirrors the claude-code cleanup.
-    const codexHelperDir = join(base, 'codex');
-    if (existsSync(join(codexHelperDir, 'spartan.zsh'))) {
-      rmSync(join(codexHelperDir, 'spartan.zsh'));
-      console.log(`  ${green('-')} codex/spartan.zsh`);
-      removed++;
-    }
-    if (existsSync(codexHelperDir)) {
-      try {
-        if (readdirSync(codexHelperDir).length === 0) {
-          rmSync(codexHelperDir, { recursive: true, force: true });
-          console.log(`  ${green('-')} codex/`);
-          removed++;
-        }
-      } catch {
-        // Best-effort cleanup; ignore failures.
-      }
-    }
+      { path: join(base, 'codex', 'spartan.zsh'), label: 'codex/spartan.zsh' },
+    ]);
+    removed += cleanupEmptyHelperDirs([[join(base, 'codex'), 'codex/']]);
 
     if (agentsMdPath && existsSync(agentsMdPath)) {
       rmSync(agentsMdPath);
@@ -291,30 +303,11 @@ async function uninstall() {
 
   console.log(`\n  Removing Spartan from ${bold(mode)} (${base})...\n`);
 
-  let removed = 0;
-  for (const { path, label } of targets) {
-    if (existsSync(path)) {
-      rmSync(path, { recursive: true, force: true });
-      console.log(`  ${green('-')} ${label}`);
-      removed++;
-    }
-  }
+  let removed = removeTargets(targets);
 
   // Clean up an empty codex/ or devin/ directory left behind after removing
   // the helper. Skip silently if the dir has other user files.
-  for (const [dir, label] of [[codexHelperDir, 'codex/'], [devinHelperDir, 'devin/']]) {
-    if (dir && existsSync(dir)) {
-      try {
-        if (readdirSync(dir).length === 0) {
-          rmSync(dir, { recursive: true, force: true });
-          console.log(`  ${green('-')} ${label}`);
-          removed++;
-        }
-      } catch {
-        // Best-effort cleanup; ignore failures.
-      }
-    }
-  }
+  removed += cleanupEmptyHelperDirs([[codexHelperDir, 'codex/'], [devinHelperDir, 'devin/']]);
 
   if (claudeMdPath && existsSync(claudeMdPath)) {
     rmSync(claudeMdPath);

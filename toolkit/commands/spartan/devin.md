@@ -150,7 +150,8 @@ Install the shell helpers so the user can also call `dvn-review`, `dvn-ship`, et
    - `~/.claude/devin/spartan.zsh` (global Claude install — carried copy)
    - `<repo-root>/.codex/devin/spartan.zsh` (local Codex install — carried copy)
    - `~/.codex/devin/spartan.zsh` (global Codex install — carried copy)
-   - `~/.config/devin/spartan.zsh` (Devin install)
+   - `<repo-root>/.devin/spartan.zsh` (local Devin install — own active helper)
+   - `~/.config/devin/spartan.zsh` (global Devin install)
    - `~/.spartan/toolkit/devin/spartan.zsh` (global Spartan install)
    - `<repo-root>/toolkit/devin/spartan.zsh` (toolkit dev mode)
 

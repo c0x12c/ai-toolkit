@@ -18,6 +18,7 @@ commands:
   - pr-ready
   - ship-pr
   - codex
+  - devin
   - commit-message
   - commit-message-with-codex
   - ship-pr-codex
