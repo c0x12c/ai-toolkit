@@ -353,6 +353,9 @@ npx @c0x12c/ai-toolkit@latest --agent=windsurf
 # Codex — installs to .codex/
 npx @c0x12c/ai-toolkit@latest --agent=codex
 
+# Devin CLI — installs to .devin/ (rules via root AGENTS.md)
+npx @c0x12c/ai-toolkit@latest --agent=devin
+
 # Copilot — installs to .github/copilot/
 npx @c0x12c/ai-toolkit@latest --agent=copilot
 ```

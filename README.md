@@ -173,6 +173,7 @@ Search for **"Spartan AI Toolkit"** in the Claude Code plugin marketplace.
 ```bash
 npx @c0x12c/ai-toolkit@latest --local --agent=claude-code  # default
 npx @c0x12c/ai-toolkit@latest --local --agent=codex        # full install
+npx @c0x12c/ai-toolkit@latest --local --agent=devin        # full install
 npx @c0x12c/ai-toolkit@latest --local --agent=cursor       # rules only
 npx @c0x12c/ai-toolkit@latest --local --agent=windsurf     # rules only
 npx @c0x12c/ai-toolkit@latest --local --agent=copilot      # rules only
@@ -182,6 +183,7 @@ npx @c0x12c/ai-toolkit@latest --local --agent=copilot      # rules only
 |------|-------------------|-------|
 | **Claude Code** | Commands + rules + skills + agents + CLAUDE.md | `.claude/` |
 | **Codex** | Commands + rules + skills + agents + CLAUDE.md | `.codex/` |
+| **Devin CLI** | Commands (as skills) + rules via AGENTS.md | `.devin/` (root `AGENTS.md`) |
 | **Cursor** | Rules + AGENTS.md | `.cursor/rules/` |
 | **Windsurf** | Rules + AGENTS.md | `.windsurf/rules/` |
 | **Copilot** | Rules + AGENTS.md | `.github/instructions/` |
@@ -197,6 +199,7 @@ npx @c0x12c/ai-toolkit@latest --uninstall --global
 
 # Remove for other agents
 npx @c0x12c/ai-toolkit@latest --uninstall --local --agent=cursor
+npx @c0x12c/ai-toolkit@latest --uninstall --local --agent=devin
 ```
 
 ---

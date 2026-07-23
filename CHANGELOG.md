@@ -7,6 +7,11 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- New `--agent=devin` installer target for [Devin CLI](https://cli.devin.ai/docs) ("Devin for Terminal") — full install tier, matching `codex`: Spartan commands installed as Devin skills (`.devin/skills/spartan-<name>/SKILL.md`, invoked as `/spartan-<name>`), rules delivered via a project-root `AGENTS.md` (Devin's documented rules convention), and support for both `--local` (`.devin/`) and `--global` (`~/.config/devin/`).
+- New `/spartan:devin` command and `toolkit/devin/spartan.zsh` shell helpers (`dvn-review`, `dvn-pr`, `dvn-ship`, `dvn-security`, `dvn-uncommitted`, `dvn-commit`, `dvn-yolo`), mirroring `/spartan:codex`/`cdx-*`. Use Devin as a second-opinion reviewer before requesting human review. Every helper runs `devin --print --permission-mode normal` by default (never `bypass`) so a review pass can't silently edit the repo.
+- `claude-code`, `codex`, and `devin` installs now cross-carry both the Codex and Devin shell-helper sources, so `/spartan:codex setup` and `/spartan:devin setup` work regardless of which agent was originally installed.
+
 ## [1.27.0] - 2026-06-18
 
 ### Changed
