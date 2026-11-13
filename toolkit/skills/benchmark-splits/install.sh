@@ -10,7 +10,9 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="${1:-$(git rev-parse --show-toplevel 2>/dev/null || true)}"
-[ -n "$REPO" ] && [ -d "$REPO/.git" ] || { echo "install: run inside a git repository (or pass its root)" >&2; exit 2; }
+# rev-parse, not a .git directory test: in a worktree or submodule .git is a file.
+[ -n "$REPO" ] && git -C "$REPO" rev-parse --git-dir >/dev/null 2>&1 ||
+  { echo "install: run inside a git repository (or pass its root)" >&2; exit 2; }
 command -v jq >/dev/null || { echo "install: needs jq (brew install jq / apt-get install jq)" >&2; exit 2; }
 
 conflicts=0
@@ -24,6 +26,7 @@ place() { # src dest
   fi
   mkdir -p "$(dirname "$dest")"
   cp "$src" "$dest"
+  case "$dest" in *.sh) chmod +x "$dest" ;; esac
   echo "  added    $2"
 }
 
@@ -32,7 +35,6 @@ place "$HERE/project/rule.md" .claude/rules/benchmark-splits.md
 for f in scripts/benchmark/seal-test.sh scripts/benchmark/run-test-once.sh \
   scripts/claude-hooks/guard-benchmark-test.sh scripts/test-benchmark-guard.sh; do
   place "$HERE/project/$f" "$f"
-  chmod +x "$REPO/$f"
 done
 
 settings="$REPO/.claude/settings.json"
@@ -58,6 +60,7 @@ if [ -n "$ignored" ]; then
   printf '  %s\n' $ignored
 fi
 
-"$REPO/scripts/test-benchmark-guard.sh"
+# The template's own check, so a DIFFERS copy in the repo cannot vouch for itself.
+"$HERE/project/scripts/test-benchmark-guard.sh"
 echo "Commit these files so the whole team gets the rule and the hook. Restart Claude Code to load the hook."
 exit "$conflicts"

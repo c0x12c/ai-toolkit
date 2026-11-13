@@ -21,10 +21,11 @@ The three sit side by side, next to the harness that scores them.
    spec, the answer-key vocabulary, the val split so it does not repeat a case) and the case format.
    Forbid it the solution: prompts, extractor or grader code, earlier run reports. It pipes the cases
    straight into `scripts/benchmark/seal-test.sh <dir>/<name>.test.json.gz` and returns only the line
-   that script prints (count and sha256). Never ask it for the cases, a sample, or a summary of them.
+   that script prints (count and sha256). Never ask it for the cases, a sample, or a summary of them, never
+   resume it, and never open its transcript or task output file: they hold every case.
 3. The harness scores val by default. It reads the test split (gzip) only when `BENCHMARK_SPLIT=test`,
-   then scores the test split alone, and writes its totals (never a case) to the file named by
-   `BENCHMARK_REPORT`.
+   then scores the test split alone. On a test run it prints totals only, in its report files and its
+   assertion messages alike, and writes them to the file named by `BENCHMARK_REPORT`.
 
 ## Improving a solution
 
@@ -32,7 +33,9 @@ The three sit side by side, next to the harness that scores them.
 - When val is good enough, commit the solution, check the run command on val, then run the test once,
   from the repository root:
   `scripts/benchmark/run-test-once.sh <dir>/<name>.test.json.gz -- <command>` (put env vars after `--`,
-  e.g. `-- env LIVE=1 ./gradlew test ...`). Commit the result file it writes.
+  e.g. `-- env LIVE=1 ./gradlew test ...`). It hides the command's output, shows the `BENCHMARK_REPORT`
+  totals, and commits the result file when the run starts and again when it ends. Push it, so no other
+  branch or worktree runs the split again.
 - Report the test number as the final result, next to the val number, in the PR.
 - After the test run, changes are measured on val again. A new final number needs a new test split
   under a new name, written the same way. Never rerun, reseal, or edit a spent split.
@@ -40,9 +43,10 @@ The three sit side by side, next to the harness that scores them.
 ## Enforcement
 
 `.claude/settings.json` runs `scripts/claude-hooks/guard-benchmark-test.sh` before every Read, Edit,
-Write, Grep, Glob and Bash call. It refuses a call on a `*.test.json.gz` file, and any command naming one
-or setting `BENCHMARK_SPLIT=test` other than the two `scripts/benchmark/` scripts. A refusal means: stop
-and go back to val. Do not work around it (another tool, another path, a copy, an encoded read). The hook
-catches mistakes; this rule is what you follow. A command that only mentions a sealed file's name (a PR
-body, a commit message) is refused too: write that text to a file and pass the file.
-`scripts/test-benchmark-guard.sh` checks the hook and both scripts.
+Write, Grep, Glob and Bash call. It refuses a call on a `*.test.json.gz` file (by name or by a
+`*.test*` glob), any command naming one or setting `BENCHMARK_SPLIT=test` other than the two
+`scripts/benchmark/` scripts, a recursive or test-path search inside gzip files (`zgrep -r`, `rg -z`), and
+any read of a subagent transcript. A command that only mentions a sealed file's name (a PR body, a commit
+message) is refused too: write that text to a file and pass the file. A refusal means: stop and go back to
+val. Do not work around it (another tool, another path, a copy, an encoded read). The hook catches
+mistakes; this rule is what you follow. `scripts/test-benchmark-guard.sh` checks the hook and both scripts.

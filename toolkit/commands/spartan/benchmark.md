@@ -11,9 +11,9 @@ Tune on val, report a sealed test split nobody tuned on, run it exactly once. Lo
 
 ## Find the skill folder
 
-First that exists: `$CLAUDE_PLUGIN_ROOT/skills/benchmark-splits`, `.claude/skills/benchmark-splits`,
-`~/.claude/skills/benchmark-splits`. Call it `SKILL_DIR`. None → tell the user to run
-`npx @c0x12c/ai-toolkit@latest` and stop.
+First that exists: `${CLAUDE_PLUGIN_ROOT}/skills/benchmark-splits` (plugin install; skip it if the
+placeholder was not filled in), `.claude/skills/benchmark-splits`, `~/.claude/skills/benchmark-splits`.
+Call it `SKILL_DIR`. None → tell the user to run `npx @c0x12c/ai-toolkit@latest` and stop.
 
 ## Steps
 
@@ -38,7 +38,8 @@ First that exists: `$CLAUDE_PLUGIN_ROOT/skills/benchmark-splits`, `.claude/skill
 10. Check: the result file does not exist, tracked files are committed, the command passes on val.
 11. Say plainly that this spends the split, and wait for the user's yes, even in auto mode.
 12. `scripts/benchmark/run-test-once.sh <dir>/<name>.test.json.gz -- <command>` (env vars after `--`).
-13. Commit the result file (`git add <dir>`). Report val and test side by side.
+    It hides the command's output, shows the totals, and commits the result file itself.
+13. Push the branch so no other branch reruns the split. Report val and test side by side.
 
 ### status
 14. `find . -name '*.val.json' -not -path '*/node_modules/*'` and, beside each, whether a sealed split

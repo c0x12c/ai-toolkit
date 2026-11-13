@@ -53,15 +53,17 @@ Spawn a `general-purpose` subagent with a brief that is complete on its own:
 - Reply: only the line the script prints. Never the cases, a sample or a summary.
 
 ### 3. Harness
-Default run scores val. `BENCHMARK_SPLIT=test` loads the gzip split and scores it alone. If
-`BENCHMARK_REPORT` is set, write the totals there (never per-case lines: the result file is committed).
+Default run scores val. `BENCHMARK_SPLIT=test` loads the gzip split and scores it alone, and then prints
+totals only: no per-case lines in report files, logs or assertion messages (a failing assertion that
+quotes the report shows every case). If `BENCHMARK_REPORT` is set, write the totals there.
 Make the test runner rerun when `BENCHMARK_SPLIT` changes (Gradle: `inputs.property('benchmarkSplit',
 System.getenv('BENCHMARK_SPLIT') ?: '')` on the test task; pytest/vitest have no cache to defeat).
 
 ### 4. Final run
 Val good enough, solution committed, the command checked on val, the user's yes (it spends the split):
-`scripts/benchmark/run-test-once.sh <dir>/<name>.test.json.gz -- <command>`. Commit the result file.
-Report val and test side by side.
+`scripts/benchmark/run-test-once.sh <dir>/<name>.test.json.gz -- <command>`. It hides the command's
+output, shows the totals and commits the result file at start and end; push it. Report val and test
+side by side.
 
 ## Gotchas
 
@@ -71,9 +73,11 @@ Report val and test side by side.
 - **A cached test task spends the split for nothing.** Gradle reports a test task UP-TO-DATE when only an
   env var changed, so the run-once script records a run that never ran. Declare the env var as an input.
 - **Any run spends the split, failed or not.** A compile error or a missing API key on the test run still
-  writes the result file. Run the exact command on val first.
+  writes the result file, and the output that would explain it is hidden. Run the exact command on val first.
+- **An unpushed result does not stop another branch.** The script commits the result, but a branch cut
+  before that commit, or another clone, can still run the split. Push right after the run.
 - **The subagent is the only one who saw the cases.** Do not resume it, ask it follow-ups about the cases,
-  or read its transcript file. Its context is the leak.
+  or read its transcript or task output file (the hook refuses those paths). Its context is the leak.
 - **A set you have run while changing the solution is val now.** Rename it `<name>.val.json` and seal a
   new test split; do not keep calling it blind or held-out.
 - **Hooks load at session start.** After `install.sh` registers the hook, restart Claude Code (or review it

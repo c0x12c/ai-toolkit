@@ -19,13 +19,16 @@ fi
 [ -d "$(dirname "$out")" ] || { echo "seal-test: no directory $(dirname "$out")" >&2; exit 2; }
 
 tmp=$(mktemp)
-trap 'rm -f "$tmp"' EXIT
+# Written beside the target and moved into place, so a failure never leaves a partial split behind.
+part=$(mktemp "$(dirname "$out")/.seal.XXXXXX")
+trap 'rm -f "$tmp" "$part"' EXIT
 cat >"$tmp"
 if ! jq -e 'type == "array" and length > 0' "$tmp" >/dev/null 2>&1; then
   echo "seal-test: stdin must be a non-empty JSON array of cases" >&2
   exit 2
 fi
 count=$(jq length "$tmp")
-jq . "$tmp" | gzip -n -9 >"$out"
+jq . "$tmp" | gzip -n -9 >"$part"
+mv "$part" "$out"
 sha=$( (command -v sha256sum >/dev/null && sha256sum "$out" || shasum -a 256 "$out") | cut -d' ' -f1)
 echo "sealed $count cases into $out (sha256 $sha)"

@@ -3,7 +3,7 @@
 # scripts; seal-test.sh never rewrites a split; run-test-once.sh runs a split once and then refuses.
 set -euo pipefail
 
-# The directory holding scripts/, so this runs from a project and from the skill's project/ template alike.
+# The directory holding scripts/, so this runs from a project and from a template folder alike.
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 HOOK="$ROOT/scripts/claude-hooks/guard-benchmark-test.sh"
 SEAL="$ROOT/scripts/benchmark/seal-test.sh"
@@ -26,7 +26,20 @@ hook 2 Bash "{\"command\":\"gzip -dc $S\"}"
 hook 2 Bash '{"command":"BENCHMARK_SPLIT=test ./gradlew test"}'
 hook 2 Bash "{\"command\":\"scripts/benchmark/run-test-once.sh $S -- zcat $S\"}"
 hook 2 Bash "{\"command\":\"scripts/benchmark/seal-test.sh $S; cat $S\"}"
+hook 2 Bash "{\"command\":\"scripts/benchmark/seal-test.sh $S </dev/null\\nzcat $S\"}"
+hook 2 Bash "{\"command\":\"scripts/benchmark/seal-test.sh $S <<'CASES'\\n[]\\nCASES\\nzcat $S\"}"
+hook 2 Bash "{\"command\":\"scripts/benchmark/seal-test.sh $S <<'CASES'\\n[]\\nCASES\\nzcat $S\\nCASES\"}"
+hook 2 Bash '{"command":"zcat x/rpa-fill.test*"}'
+hook 2 Bash '{"command":"zgrep -r close src/main/resources"}'
+hook 2 Bash '{"command":"rg -z close service/"}'
+hook 2 Bash '{"command":"rg --search-zip close"}'
+hook 2 Bash '{"command":"BENCHMARK_SPLIT=\"test\" ./gradlew test"}'
+hook 2 Bash "{\"command\":\"export BENCHMARK_SPLIT='test'\"}"
+hook 2 Read '{"file_path":"/private/tmp/claude/proj/tasks/a1b2.output"}'
+hook 2 Bash '{"command":"tail ~/.claude/projects/p/s/subagents/agent-1.jsonl"}'
 hook 0 Read '{"file_path":"x/rpa-fill.val.json"}'
+hook 0 Bash '{"command":"rg -n zone service/"}'
+hook 0 Bash '{"command":"gzip -9 build/report.txt"}'
 hook 0 Write '{"file_path":"docs/BENCH.md","content":"name the split <name>.test.json.gz"}'
 hook 0 Grep '{"pattern":"close","path":"service/src/test/resources"}'
 hook 0 Bash '{"command":"git status"}'
@@ -37,17 +50,27 @@ hook 0 Bash "{\"command\":\"scripts/benchmark/run-test-once.sh $S -- ./gradlew -
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 git -C "$tmp" init -q
-git -C "$tmp" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
+git -C "$tmp" config user.email t@t
+git -C "$tmp" config user.name t
+git -C "$tmp" commit -q --allow-empty -m init
 sealed="$tmp/demo.test.json.gz"
 
 echo '[{"id":"a"},{"id":"b"}]' | "$SEAL" "$sealed" | grep -q "sealed 2 cases" || { echo "FAIL seal"; fail=1; }
 if echo '[{"id":"c"}]' | "$SEAL" "$sealed" >/dev/null 2>&1; then echo "FAIL seal rewrote a split"; fail=1; fi
 if echo '{}' | "$SEAL" "$tmp/other.test.json.gz" >/dev/null 2>&1; then echo "FAIL seal took a non-array"; fail=1; fi
 
-(cd "$tmp" && "$RUN" "$sealed" -- sh -c 'test "$BENCHMARK_SPLIT" = test && echo "score 9/10" >"$BENCHMARK_REPORT"') >/dev/null ||
+out=$(cd "$tmp" && "$RUN" "$sealed" -- sh -c 'test "$BENCHMARK_SPLIT" = test && echo "a quoted case" && echo "score 9/10" >"$BENCHMARK_REPORT"') ||
   { echo "FAIL first run"; fail=1; }
-jq -e '.report == "score 9/10\n" and .exit_code == 0' "$tmp/demo.test-result.json" >/dev/null || { echo "FAIL result file"; fail=1; }
+jq -e '.report == "score 9/10" and .exit_code == 0' "$tmp/demo.test-result.json" >/dev/null || { echo "FAIL result file"; fail=1; }
+case "$out" in *"a quoted case"*) echo "FAIL the command's output was shown"; fail=1 ;; esac
+case "$out" in *"score 9/10"*) ;; *) echo "FAIL the report was not shown"; fail=1 ;; esac
+[ "$(git -C "$tmp" log --oneline | grep -c 'demo test split')" = 2 ] || { echo "FAIL the result was not committed at start and end"; fail=1; }
 if (cd "$tmp" && "$RUN" "$sealed" -- true) >/dev/null 2>&1; then echo "FAIL second run was not refused"; fail=1; fi
+
+# A run killed halfway still spends its split.
+echo '[{"id":"a"}]' | "$SEAL" "$tmp/cut.test.json.gz" >/dev/null
+(cd "$tmp" && "$RUN" "$tmp/cut.test.json.gz" -- sh -c 'kill -TERM "$PPID"; sleep 5') >/dev/null 2>&1 || true
+[ -f "$tmp/cut.test-result.json" ] || { echo "FAIL an interrupted run left no result"; fail=1; }
 
 [ "$fail" = 0 ] && echo "benchmark guard: ok"
 exit "$fail"
