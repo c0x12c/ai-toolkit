@@ -24,8 +24,9 @@ The three sit side by side, next to the harness that scores them.
    that script prints (count and sha256). Never ask it for the cases, a sample, or a summary of them, never
    resume it, and never open its transcript or task output file: they hold every case.
 3. The harness scores val by default. It reads the test split (gzip) only when `BENCHMARK_SPLIT=test`,
-   then scores the test split alone. On a test run it prints totals only, in its report files and its
-   assertion messages alike, and writes them to the file named by `BENCHMARK_REPORT`.
+   then scores the whole test split alone (no case filter), and only if the file's sha256 equals
+   `BENCHMARK_SPLIT_SHA256`. On a test run it turns logging off and prints totals only, in its report files
+   and its assertion messages alike, and writes them to the file named by `BENCHMARK_REPORT`.
 
 ## Improving a solution
 

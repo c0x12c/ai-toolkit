@@ -614,7 +614,8 @@ if [[ -n "$SELECTED_SKILLS" ]]; then
       for sf in "$skill_dir"/skill.md "$skill_dir"/SKILL.md; do
         [[ -f "$sf" ]] || continue
         sf_dest="$dest_dir/$(basename "$sf")"
-        if [[ -f "$sf_dest" ]] && ! diff -q "$sf" "$sf_dest" > /dev/null 2>&1; then
+        # A missing SKILL.md (an install nested one level too deep) counts as changed, so it is repaired.
+        if [[ ! -f "$sf_dest" ]] || ! diff -q "$sf" "$sf_dest" > /dev/null 2>&1; then
           IS_IDENTICAL=false
           break
         fi
@@ -634,13 +635,13 @@ if [[ -n "$SELECTED_SKILLS" ]]; then
       cp -r "$dest_dir"/* "$SKILL_BACKUP_DIR/$skill_name/" 2>/dev/null
       rm -rf "$dest_dir"
       mkdir -p "$dest_dir"
-      cp -r "$skill_dir"* "$dest_dir/" 2>/dev/null
+      cp -R "$skill_dir/." "$dest_dir/" 2>/dev/null
       rm -rf "$dest_dir"/__pycache__ "$dest_dir"/scripts/__pycache__ 2>/dev/null
       echo -e "  ${GREEN}✓${NC} /$skill_name (backed up → overwritten)"
       SCOUNT=$((SCOUNT+1))
     else
       mkdir -p "$dest_dir"
-      cp -r "$skill_dir"* "$dest_dir/" 2>/dev/null
+      cp -R "$skill_dir/." "$dest_dir/" 2>/dev/null
       rm -rf "$dest_dir"/__pycache__ "$dest_dir"/scripts/__pycache__ 2>/dev/null
       echo -e "  ${GREEN}✓${NC} /$skill_name (new)"
       SCOUNT=$((SCOUNT+1))

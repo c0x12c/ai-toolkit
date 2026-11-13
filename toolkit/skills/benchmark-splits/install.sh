@@ -14,6 +14,12 @@ REPO="${1:-$(git rev-parse --show-toplevel 2>/dev/null || true)}"
 [ -n "$REPO" ] && git -C "$REPO" rev-parse --git-dir >/dev/null 2>&1 ||
   { echo "install: run inside a git repository (or pass its root)" >&2; exit 2; }
 command -v jq >/dev/null || { echo "install: needs jq (brew install jq / apt-get install jq)" >&2; exit 2; }
+settings="$REPO/.claude/settings.json"
+# Checked before anything is copied, so a broken settings file never ends in a half-installed guard.
+if [ -s "$settings" ] && ! jq -e 'type == "object"' "$settings" >/dev/null 2>&1; then
+  echo "install: $settings is not a JSON object; fix it and rerun. Nothing was changed." >&2
+  exit 2
+fi
 
 conflicts=0
 place() { # src dest
@@ -37,19 +43,23 @@ for f in scripts/benchmark/seal-test.sh scripts/benchmark/run-test-once.sh \
   place "$HERE/project/$f" "$f"
 done
 
-settings="$REPO/.claude/settings.json"
 hook_cmd='"$CLAUDE_PROJECT_DIR"/scripts/claude-hooks/guard-benchmark-test.sh'
 mkdir -p "$REPO/.claude"
 [ -s "$settings" ] || echo '{}' >"$settings"
-if jq -e --arg c "$hook_cmd" '[.hooks.PreToolUse[]?.hooks[]?.command] | index($c)' "$settings" >/dev/null; then
+merged=$(mktemp)
+trap 'rm -f "$merged"' EXIT
+# Any entry already running this hook is dropped and the full one appended, so a narrower matcher left by
+# hand (say "Bash" only) is repaired rather than taken as installed. Other hooks and settings are kept.
+jq --arg c "$hook_cmd" '
+  .hooks.PreToolUse = ([(.hooks.PreToolUse // [])[] | select(([.hooks[]?.command] | index($c)) == null)] + [{
+    matcher: "Read|Edit|Write|MultiEdit|NotebookEdit|Grep|Glob|Bash",
+    hooks: [{type: "command", command: $c}]
+  }])' "$settings" >"$merged" || { echo "install: could not merge the hook into $settings" >&2; exit 2; }
+if jq -e --slurpfile want "$merged" '. == $want[0]' "$settings" >/dev/null; then
   echo "  same     .claude/settings.json (hook already registered)"
 else
-  tmp=$(mktemp)
-  jq --arg c "$hook_cmd" '.hooks.PreToolUse = ((.hooks.PreToolUse // []) + [{
-      matcher: "Read|Edit|Write|MultiEdit|NotebookEdit|Grep|Glob|Bash",
-      hooks: [{type: "command", command: $c}]
-    }])' "$settings" >"$tmp" && mv "$tmp" "$settings"
-  echo "  added    PreToolUse hook to .claude/settings.json"
+  cp "$merged" "$settings"
+  echo "  updated  PreToolUse hook in .claude/settings.json"
 fi
 
 # A gitignored file would stay on this machine only, and teammates would get no rule and no hook.

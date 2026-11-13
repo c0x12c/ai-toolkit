@@ -53,9 +53,10 @@ Spawn a `general-purpose` subagent with a brief that is complete on its own:
 - Reply: only the line the script prints. Never the cases, a sample or a summary.
 
 ### 3. Harness
-Default run scores val. `BENCHMARK_SPLIT=test` loads the gzip split and scores it alone, and then prints
-totals only: no per-case lines in report files, logs or assertion messages (a failing assertion that
-quotes the report shows every case). If `BENCHMARK_REPORT` is set, write the totals there.
+Default run scores val. `BENCHMARK_SPLIT=test` loads the gzip split, refuses it unless its sha256 equals
+`BENCHMARK_SPLIT_SHA256` (so the run scores the file the script claimed), refuses any case filter, and
+scores the whole split alone. It turns logging off (test reports keep stdout) and prints totals only: no
+per-case lines in report files or assertion messages. If `BENCHMARK_REPORT` is set, write the totals there.
 Make the test runner rerun when `BENCHMARK_SPLIT` changes (Gradle: `inputs.property('benchmarkSplit',
 System.getenv('BENCHMARK_SPLIT') ?: '')` on the test task; pytest/vitest have no cache to defeat).
 

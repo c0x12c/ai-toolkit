@@ -37,6 +37,19 @@ hook 2 Bash '{"command":"BENCHMARK_SPLIT=\"test\" ./gradlew test"}'
 hook 2 Bash "{\"command\":\"export BENCHMARK_SPLIT='test'\"}"
 hook 2 Read '{"file_path":"/private/tmp/claude/proj/tasks/a1b2.output"}'
 hook 2 Bash '{"command":"tail ~/.claude/projects/p/s/subagents/agent-1.jsonl"}'
+hook 2 Grep '{"pattern":"said","path":"/Users/u/.claude/projects/p/0f8e1c2a-1b2c-4d5e-8f90-123456789abc/subagents"}'
+hook 2 Bash '{"command":"rg said /private/tmp/claude-502/p/s/tasks"}'
+hook 2 Grep '{"pattern":"said","path":"/Users/u/.claude/projects"}'
+hook 2 Bash "{\"command\":\"scripts/benchmark/seal-test.sh $S <<CASES\\n[\$(cat secret)]\\nCASES\"}"
+hook 2 Bash "{\"command\":\"scripts/benchmark/run-test-once.sh $S -- cmd <<'X'\\nzcat $S\\nX\"}"
+hook 2 Bash "{\"command\":\"git add $S; zcat $S\"}"
+hook 2 Bash "{\"command\":\"git show HEAD:$S\"}"
+hook 2 Bash "{\"command\":\"scripts/benchmark/seal-test.sh $S > $S\"}"
+hook 2 Bash "{\"command\":\"scripts/benchmark/run-test-once.sh $S -- true >> $S\"}"
+hook 0 Read '{"file_path":"/private/tmp/claude-502/p/s/tasks/bxy2azx22.output"}'
+hook 0 Bash "{\"command\":\"git add -- $S\"}"
+hook 0 Bash "{\"command\":\"git commit -m 'seal x/rpa-fill.test.json.gz'\"}"
+hook 0 Read '{"file_path":"/Users/u/.claude/projects/p/memory/MEMORY.md"}'
 hook 0 Read '{"file_path":"x/rpa-fill.val.json"}'
 hook 0 Bash '{"command":"rg -n zone service/"}'
 hook 0 Bash '{"command":"gzip -9 build/report.txt"}'
@@ -49,6 +62,19 @@ hook 0 Bash "{\"command\":\"scripts/benchmark/run-test-once.sh $S -- ./gradlew -
 # seal-test.sh and run-test-once.sh, in a throwaway repo.
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
+
+# Without jq on PATH, the hook still refuses what it refuses with jq.
+mkdir "$tmp/nojq"
+for t in bash cat grep; do ln -s "$(command -v "$t")" "$tmp/nojq/$t"; done
+nojq() { # expected-exit json
+  local got=0
+  printf '%s' "$2" | PATH="$tmp/nojq" "$HOOK" 2>/dev/null || got=$?
+  if [ "$got" != "$1" ]; then echo "FAIL hook without jq $2: exit $got, want $1"; fail=1; fi
+}
+nojq 2 '{"tool_name":"Bash","tool_input":{"command":"BENCHMARK_SPLIT=\"test\" ./gradlew test"}}'
+nojq 2 '{"tool_name":"Bash","tool_input":{"command":"rg -z close service/"}}'
+nojq 2 "{\"tool_name\":\"Read\",\"tool_input\":{\"file_path\":\"$S\"}}"
+nojq 0 '{"tool_name":"Bash","tool_input":{"command":"git status"}}'
 git -C "$tmp" init -q
 git -C "$tmp" config user.email t@t
 git -C "$tmp" config user.name t
@@ -58,14 +84,23 @@ sealed="$tmp/demo.test.json.gz"
 echo '[{"id":"a"},{"id":"b"}]' | "$SEAL" "$sealed" | grep -q "sealed 2 cases" || { echo "FAIL seal"; fail=1; }
 if echo '[{"id":"c"}]' | "$SEAL" "$sealed" >/dev/null 2>&1; then echo "FAIL seal rewrote a split"; fail=1; fi
 if echo '{}' | "$SEAL" "$tmp/other.test.json.gz" >/dev/null 2>&1; then echo "FAIL seal took a non-array"; fail=1; fi
+if echo '[] [{"id":"a"}]' | "$SEAL" "$tmp/other.test.json.gz" >/dev/null 2>&1; then echo "FAIL seal took two documents"; fail=1; fi
+[ -e "$tmp/other.test.json.gz" ] && { echo "FAIL a refused seal left a file"; fail=1; }
 
-out=$(cd "$tmp" && "$RUN" "$sealed" -- sh -c 'test "$BENCHMARK_SPLIT" = test && echo "a quoted case" && echo "score 9/10" >"$BENCHMARK_REPORT"') ||
+want=$( (command -v sha256sum >/dev/null && sha256sum "$sealed" || shasum -a 256 "$sealed") | cut -d' ' -f1)
+out=$(cd "$tmp" && "$RUN" "$sealed" -- env API_KEY=s3cret sh -c 'test "$BENCHMARK_SPLIT" = test && test "$BENCHMARK_SPLIT_SHA256" = "'"$want"'" && echo "a quoted case" && echo "score 9/10" >"$BENCHMARK_REPORT"') ||
   { echo "FAIL first run"; fail=1; }
 jq -e '.report == "score 9/10" and .exit_code == 0' "$tmp/demo.test-result.json" >/dev/null || { echo "FAIL result file"; fail=1; }
+grep -q s3cret "$tmp/demo.test-result.json" && { echo "FAIL a NAME=value secret was recorded"; fail=1; }
 case "$out" in *"a quoted case"*) echo "FAIL the command's output was shown"; fail=1 ;; esac
 case "$out" in *"score 9/10"*) ;; *) echo "FAIL the report was not shown"; fail=1 ;; esac
 [ "$(git -C "$tmp" log --oneline | grep -c 'demo test split')" = 2 ] || { echo "FAIL the result was not committed at start and end"; fail=1; }
 if (cd "$tmp" && "$RUN" "$sealed" -- true) >/dev/null 2>&1; then echo "FAIL second run was not refused"; fail=1; fi
+
+# Another worktree of the same repository, where the result commit is not checked out, is refused too.
+git -C "$tmp" worktree add -q "$tmp/wt" HEAD~2 2>/dev/null
+cp "$sealed" "$tmp/wt/demo.test.json.gz"
+if (cd "$tmp/wt" && "$RUN" "$tmp/wt/demo.test.json.gz" -- true) >/dev/null 2>&1; then echo "FAIL another worktree reran the split"; fail=1; fi
 
 # A run killed halfway still spends its split.
 echo '[{"id":"a"}]' | "$SEAL" "$tmp/cut.test.json.gz" >/dev/null
