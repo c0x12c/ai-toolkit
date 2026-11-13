@@ -23,26 +23,31 @@ Call it `SKILL_DIR`. None → tell the user to run `npx @c0x12c/ai-toolkit@lates
 3. A `DIFFERS` line: show the diff and ask before replacing. A gitignore warning: propose the
    `!`-exceptions so teammates get the files.
 4. Tell the user to commit the added files and restart Claude Code so the hook loads.
+5. If `install.sh` printed `added` or `updated` for anything, **stop here**, even when `new` or `test` was
+   asked for and even in auto mode: the hook is not loaded in this session, so nothing guards a split
+   yet. Ask the user to restart Claude Code and rerun the command. Go on only when every line says `same`.
 
 ### new "name"
-5. Ask (or derive from the code) what is scored, where the harness lives, the case format, how a case is
+6. Ask (or derive from the code) what is scored, where the harness lives, the case format, how a case is
    graded, and the source material the cases come from.
-6. Write `<dir>/<name>.val.json` in this session.
-7. Spawn a fresh subagent to write and seal `<dir>/<name>.test.json.gz` with the brief in the skill
+7. Write `<dir>/<name>.val.json` in this session.
+8. Spawn a fresh subagent to write and seal `<dir>/<name>.test.json.gz` with the brief in the skill
    (step 2). Relay only the line it returns.
-8. Wire the harness: val by default, test alone under `BENCHMARK_SPLIT=test`, totals to
-   `BENCHMARK_REPORT`, runner reruns when the env var changes.
-9. Run val once to prove the harness. Never run the test split here.
+9. Wire the harness: val by default; under `BENCHMARK_SPLIT=test` the whole split alone, only if its
+   sha256 is `BENCHMARK_SPLIT_SHA256`, logging off, totals only to `BENCHMARK_REPORT`; the runner reruns
+   when the env vars change.
+10. Run val once to prove the harness. Never run the test split here.
 
 ### test "name"
-10. Check: the result file does not exist, tracked files are committed, the command passes on val.
-11. Say plainly that this spends the split, and wait for the user's yes, even in auto mode.
-12. `scripts/benchmark/run-test-once.sh <dir>/<name>.test.json.gz -- <command>` (env vars after `--`).
+11. Check: the result file does not exist, tracked files are committed, the command passes on val.
+12. Say plainly that this spends the split, and wait for the user's yes, even in auto mode.
+13. `scripts/benchmark/run-test-once.sh <dir>/<name>.test.json.gz -- <command>` (env vars after `--`).
     It hides the command's output, shows the totals, and commits the result file itself.
-13. Push the branch so no other branch reruns the split. Report val and test side by side.
+14. Push the branch: worktrees of this repo already see the split as claimed, other clones only once the
+    result commit reaches them. Report val and test side by side.
 
 ### status
-14. `find . -name '*.val.json' -not -path '*/node_modules/*'` and, beside each, whether a sealed split
+15. `find . -name '*.val.json' -not -path '*/node_modules/*'` and, beside each, whether a sealed split
     and a result file exist (list names only). Say which benchmarks have no test split and which are spent.
 
 ## Rules

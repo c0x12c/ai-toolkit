@@ -35,8 +35,10 @@ The three sit side by side, next to the harness that scores them.
   from the repository root:
   `scripts/benchmark/run-test-once.sh <dir>/<name>.test.json.gz -- <command>` (put env vars after `--`,
   e.g. `-- env LIVE=1 ./gradlew test ...`). It hides the command's output, shows the `BENCHMARK_REPORT`
-  totals, and commits the result file when the run starts and again when it ends. Push it, so no other
-  branch or worktree runs the split again.
+  totals, and commits the result file when the run starts and again when it ends. Before running, it
+  claims the split in the repository's shared git directory, so no other worktree or branch of this clone
+  can run it, at the same time or later. Another clone only learns the split is spent from the result
+  commit, so push it right away, and never run a test split from a second clone.
 - Report the test number as the final result, next to the val number, in the PR.
 - After the test run, changes are measured on val again. A new final number needs a new test split
   under a new name, written the same way. Never rerun, reseal, or edit a spent split.

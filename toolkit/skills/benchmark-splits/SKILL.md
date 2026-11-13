@@ -68,15 +68,19 @@ side by side.
 
 ## Gotchas
 
-- **The hook refuses a command that only names a sealed file.** A `gh pr create --body "..."` or a commit
-  message mentioning `x.test.json.gz` is blocked. Write the text to a file and pass `--body-file` / `-F`.
-  Stage a sealed file by its directory (`git add <dir>`), not by name.
+- **The hook refuses most commands that only name a sealed file.** A `gh pr create --body "..."` mentioning
+  `x.test.json.gz` is blocked; write the text to a file and pass `--body-file`. Plain single-line
+  `git add -- <file>`, `git mv`, `git status` and `git commit` are allowed: stage the sealed file by name,
+  never a whole directory that may hold other files.
 - **A cached test task spends the split for nothing.** Gradle reports a test task UP-TO-DATE when only an
   env var changed, so the run-once script records a run that never ran. Declare the env var as an input.
 - **Any run spends the split, failed or not.** A compile error or a missing API key on the test run still
   writes the result file, and the output that would explain it is hidden. Run the exact command on val first.
-- **An unpushed result does not stop another branch.** The script commits the result, but a branch cut
-  before that commit, or another clone, can still run the split. Push right after the run.
+- **Only another clone can rerun a split.** The script claims the split in the shared git directory, so
+  every worktree and branch of this clone is refused. A second clone sees only the pushed result commit:
+  push right after the run, and run test splits from one clone.
+- **Setup and a split in one session leaves the split unguarded.** Hooks load when Claude Code starts, so
+  after `install.sh` adds the hook, restart before writing or running a split.
 - **The subagent is the only one who saw the cases.** Do not resume it, ask it follow-ups about the cases,
   or read its transcript or task output file (the hook refuses those paths). Its context is the leak.
 - **A set you have run while changing the solution is val now.** Rename it `<name>.val.json` and seal a
