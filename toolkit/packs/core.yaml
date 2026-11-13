@@ -34,13 +34,16 @@ commands:
   - gate-review
   - epic
   - brownfield
+  - benchmark
 
 rules:
   - core/NAMING_CONVENTIONS.md
   - core/TIMEZONE.md
   - core/SKILL_AUTHORING.md
+  - core/BENCHMARK_SPLITS.md
 
-skills: []
+skills:
+  - benchmark-splits
 agents:
   - phase-reviewer.md
 claude-sections: []

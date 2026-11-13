@@ -354,6 +354,7 @@ Type `/spartan` for the smart router. Or go direct:
 | `spec "feature"` | Write a feature spec &mdash; saves to `.planning/specs/` |
 | `plan "feature"` | Implementation plan from spec &mdash; saves to `.planning/plans/` |
 | `gate-review` | Dual-agent review (builder + reviewer both accept) |
+| `benchmark [setup\|new\|test\|status]` | Val split to tune on, sealed test split run once (hook-enforced) |
 | `daily` | Standup summary from git history |
 | `pr-ready` | Full checklist before creating any PR |
 | `codex` | Run Codex as a second-opinion reviewer |

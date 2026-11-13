@@ -7,6 +7,9 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- **`/spartan:benchmark`** (core): every benchmark gets a val split to tune on (`<name>.val.json`) and a sealed test split (`<name>.test.json.gz`). A fresh subagent writes the test split from the source material and never hands the cases back; it runs exactly once, and its result is the final number. `setup` installs the guard into the repo: the project rule, `scripts/benchmark/seal-test.sh`, `scripts/benchmark/run-test-once.sh` (refuses a dirty tree and a second run), a PreToolUse hook that refuses reads, searches and decompression of a sealed split, and `scripts/test-benchmark-guard.sh`. New skill `benchmark-splits` and new always-loaded rule `core/BENCHMARK_SPLITS.md`.
+
 ## [1.27.0] - 2026-06-18
 
 ### Changed
