@@ -185,6 +185,7 @@ Type `/spartan` to get the smart router — it asks what you need and picks the 
 | `spec "feature"` | Write a feature spec — saves to `.planning/specs/` |
 | `plan "feature"` | Write implementation plan from spec — saves to `.planning/plans/` |
 | `gate-review [phase]` | Dual-agent review (Gate 3.5) — builder + reviewer both accept |
+| `benchmark [setup\|new\|test\|status]` | Val split to tune on, sealed test split run once (hook-enforced) |
 | `daily` | Standup summary from git history |
 | `pr-ready` | Full checklist before creating any PR |
 | `codex` | Run Codex as a second-opinion reviewer |

@@ -120,6 +120,7 @@ Route here when the user wants a specific tool, not a full workflow.
 | "design a screen", "UI design", "design doc" | `/spartan:ux prototype` |
 | "UX research", "user interviews", "design system" | `/spartan:ux` |
 | "review my code", "dual review", "gate review" | `/spartan:gate-review` |
+| "create a benchmark", "eval set", "final eval", "test split" | `/spartan:benchmark` |
 | "map unfamiliar codebase", "context map" | `/spartan:brownfield` |
 | "standup", "what did I do" | `/spartan:daily` |
 

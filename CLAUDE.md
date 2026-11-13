@@ -124,6 +124,7 @@ Auto mode is ideal for experienced users who trust the workflow and want maximum
 | Command | Purpose |
 |---|---|
 | `/spartan:gate-review [phase]` | Dual-agent review (Gate 3.5) — builder + reviewer must both accept |
+| `/spartan:benchmark [setup\|new\|test\|status]` | Val split to tune on, sealed test split run once — rule `core/BENCHMARK_SPLITS.md` |
 
 ### Individual Commands
 | Command | Purpose |
